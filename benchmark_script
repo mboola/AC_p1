@@ -1,5 +1,20 @@
 #!/bin/bash
 
+# script can be tested with only one argument
+#to check correct functionality of simplescalar
+# (doesnt matter what is typed in)
+if [ $# -ne 24 ] && [ $# -ne 1 ]; then
+	echo "Incorrect number of params. Arguments should be:"
+	echo "{1 - fetch width} {2 - decode width} {3 - issue width} {4 - commit width}"
+	echo "{5 - ruu size} {6 - lsq size}"
+	echo "{7 - cache tt dl1} {8 - cache tb dl1} {9 - cache asso dl1} "
+	echo "{10 - cache tt il1} {11 - cache tb il1} {12 - cache asso il1} "
+	echo "{13 - cache tt dl2} {14 - cache tb dl2} {15 - cache asso dl2} "
+	echo "{16 - clockCPU} {17 - clockRAM} {18 - dataRateRAM} {19 - mem_width} "
+	echo "{20 - ALU int} {21 - ALU float} {22 - mul int} {23 - mult float} {24 - memport}"
+	exit
+fi
+
 path=$(pwd)
 
 results="results/"
@@ -7,15 +22,15 @@ outputs="outputs/"
 errors="errors/"
 
 if [ ! -d ${results} ]; then
-    mkdir ${results}
+	mkdir ${results}
 fi
 
 if [ ! -d ${outputs} ]; then
-    mkdir ${outputs}
+	mkdir ${outputs}
 fi
 
 if [ ! -d ${errors} ]; then
-    mkdir ${errors}
+	mkdir ${errors}
 fi
 
 # Set up paths and variables
@@ -23,9 +38,52 @@ simplescalar="simplesim-3.0_acx2/sim-outorder"
 fastfwd="-fastfwd 100000000"
 maxinst="-max:inst 100000000"
 
-cache_dl1="-cache:dl1 dl1:64:32:4:l"
-cache_il1="-cache:il1 il1:256:32:2:l"
-cache_dl2="-cache:dl2 ul2:128:64:8:l"
+# if default values
+if [ $# -ne 1 ]; then
+	# 1
+	fetch="-fetch:ifqsize ${1}"
+	decode="-decode:width ${2}"
+	issue="-issue:width ${3}"
+	commit="-commit:width ${4}"
+
+	# 2
+	ruu_size="-ruu:size ${5}"
+	lsq_size="-lsq:size ${6}"
+
+	# 3
+	nBlock=$(echo "scale=2; ${7} / (${8} * ${9})" | bc)
+	nBlock_rounded=$(echo "$nBlock" | awk '{print int($1)}')
+	cache_dl1="-cache:dl1 dl1:${nBlock_rounded}:${8}:${9}:l"
+	nBlock=$(echo "scale=2; ${10} / (${11} * ${12})" | bc)
+	nBlock_rounded=$(echo "$nBlock" | awk '{print int($1)}')
+	cache_il1="-cache:il1 il1:${nBlock_rounded}:${11}:${12}:l"
+	nBlock=$(echo "scale=2; ${13} / (${14} * ${15})" | bc)
+	nBlock_rounded=$(echo "$nBlock" | awk '{print int($1)}')
+	cache_dl2="-cache:dl2 ul2:${nBlock_rounded}:${14}:${15}:l"
+
+	# 4
+	tRCD=16
+	CAS=32
+	clockCPU=${16}
+	clockRAM=${17}
+	dataRateRAM=${18}
+	first=$(echo "scale=2; (${tRCD} + ${CAS}) * ${clockCPU} / ${clockRAM}" | bc)
+	first_rounded=$(echo "$first" | awk '{print int($1)}')
+	inner=1
+	mem_lat="-mem:lat ${first_rounded} ${inner}"
+	mem_width="-mem:width ${19}"
+
+	# 5
+	alui="-res:ialu ${20}"
+	aluf="-res:fpalu ${21}"
+	muli="-res:imult ${22}"
+	mulf="-res:fpmult ${23}"
+	memport="-res:memport ${24}"
+fi
+
+parameters="${fastfwd} ${maxinst} ${fetch} ${decode} ${issue} ${commit} ${ruu_size} "
+parameters+="${lsq_size} ${cache_dl1} ${cache_il1} ${cache_dl2} ${mem_lat} ${mem_width} "
+parameters+="${alui} ${aluf} ${muli} ${mulf} ${memport}"
 
 # Set path to the root directory where the programs are located
 programs_root="${path}/programs/"
@@ -61,24 +119,24 @@ vpr_in="net.in arch.in place.out dum.out -nodisp -place_only -init_t 5 -exit_t 0
 vpr_out="${path}/${outputs}vpr.out"
 vpr_err="${path}/${errors}vpr.err"
 
-pushd "${programs_root}/ammp/data/ref" || exit
-${programs_root}${simplescalar} ${fastfwd} ${maxinst} ${cache_dl1} ${cache_il1} ${cache_dl2} ${ammp_result} ${ammp_exe} < ${ammp_in} > ${ammp_out} 2> ${ammp_err}
+pushd "${programs_root}/ammp/data/ref"
+${programs_root}${simplescalar} ${parameters} ${ammp_result} ${ammp_exe} < ${ammp_in} > ${ammp_out} 2> ${ammp_err}
 popd
 
-pushd "${programs_root}/applu/data/ref" || exit
-${programs_root}${simplescalar} ${fastfwd} ${maxinst} ${cache_dl1} ${cache_il1} ${cache_dl2} ${applu_result} ${applu_exe} < ${applu_in} > ${applu_out} 2> ${applu_err}
+pushd "${programs_root}/applu/data/ref"
+${programs_root}${simplescalar} ${parameters} ${applu_result} ${applu_exe} < ${applu_in} > ${applu_out} 2> ${applu_err}
 popd
 
-pushd "${programs_root}/eon/data/ref" || exit
-${programs_root}${simplescalar} ${fastfwd} ${maxinst} ${cache_dl1} ${cache_il1} ${cache_dl2} ${eon_result} ${eon_exe} ${eon_in} > ${eon_out} 2> ${eon_err}
+pushd "${programs_root}/eon/data/ref"
+${programs_root}${simplescalar} ${parameters} ${eon_result} ${eon_exe} ${eon_in} > ${eon_out} 2> ${eon_err}
 popd
 
-pushd "${programs_root}/equake/data/ref" || exit
-${programs_root}${simplescalar} ${fastfwd} ${maxinst} ${cache_dl1} ${cache_il1} ${cache_dl2} ${equake_result} ${equake_exe} < ${equake_in} > ${equake_out} 2> ${equake_err}
+pushd "${programs_root}/equake/data/ref"
+${programs_root}${simplescalar} ${parameters} ${equake_result} ${equake_exe} < ${equake_in} > ${equake_out} 2> ${equake_err}
 popd
 
-pushd "${programs_root}/vpr/data/ref" || exit
-${programs_root}${simplescalar} ${fastfwd} ${maxinst} ${cache_dl1} ${cache_il1} ${cache_dl2} ${vpr_result} ${vpr_exe} ${vpr_in} > ${vpr_out} 2> ${vpr_err}
+pushd "${programs_root}/vpr/data/ref"
+${programs_root}${simplescalar} ${parameters} ${vpr_result} ${vpr_exe} ${vpr_in} > ${vpr_out} 2> ${vpr_err}
 popd
 
 
