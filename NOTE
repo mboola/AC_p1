@@ -1,0 +1,5 @@
+How to use:
+1. Enter simplescalar directory inside programs.
+2. Run make config-alpha
+3. Run make
+4. Execute the script to benchmark with the desired parameters (check chmod 755)

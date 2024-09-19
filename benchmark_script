@@ -1,0 +1,85 @@
+#!/bin/bash
+
+path=$(pwd)
+
+results="results/"
+outputs="outputs/"
+errors="errors/"
+
+if [ ! -d ${results} ]; then
+    mkdir ${results}
+fi
+
+if [ ! -d ${outputs} ]; then
+    mkdir ${outputs}
+fi
+
+if [ ! -d ${errors} ]; then
+    mkdir ${errors}
+fi
+
+# Set up paths and variables
+simplescalar="simplesim-3.0_acx2/sim-outorder"
+fastfwd="-fastfwd 100000000"
+maxinst="-max:inst 100000000"
+
+cache_dl1="-cache:dl1 dl1:64:32:4:l"
+cache_il1="-cache:il1 il1:256:32:2:l"
+cache_dl2="-cache:dl2 ul2:128:64:8:l"
+
+# Set path to the root directory where the programs are located
+programs_root="${path}/programs/"
+
+# Define paths to ammp executable and output files
+ammp_exe=${programs_root}"ammp/exe/ammp.exe"
+ammp_result="-redir:sim ${path}/${results}ammp_result"
+ammp_in="ammp.in"
+ammp_out="${path}/${outputs}ammp.out"
+ammp_err="${path}/${errors}ammp.err"
+
+applu_exe=${programs_root}"applu/exe/applu.exe"
+applu_result="-redir:sim ${path}/${results}applu_result"
+applu_in="applu.in"
+applu_out="${path}/${outputs}applu.out"
+applu_err="${path}/${errors}applu.err"
+
+eon_exe=${programs_root}"eon/exe/eon.exe"
+eon_result="-redir:sim ${path}/${results}eon_result"
+eon_in="chair.control.cook chair.camera chair.surfaces chair.cook.ppm ppm pixels_out.cook"
+eon_out="${path}/${outputs}eon.out"
+eon_err="${path}/${errors}eon.err"
+
+equake_exe=${programs_root}"equake/exe/equake.exe"
+equake_result="-redir:sim ${path}/${results}equake_result"
+equake_in="inp.in"
+equake_out="${path}/${outputs}equake.out"
+equake_err="${path}/${errors}equake.err"
+
+vpr_exe=${programs_root}"vpr/exe/vpr.exe"
+vpr_result="-redir:sim ${path}/${results}vpr_result"
+vpr_in="net.in arch.in place.out dum.out -nodisp -place_only -init_t 5 -exit_t 0.005 -alpha_t 0.9412 -inner_num 2"
+vpr_out="${path}/${outputs}vpr.out"
+vpr_err="${path}/${errors}vpr.err"
+
+pushd "${programs_root}/ammp/data/ref" || exit
+${programs_root}${simplescalar} ${fastfwd} ${maxinst} ${cache_dl1} ${cache_il1} ${cache_dl2} ${ammp_result} ${ammp_exe} < ${ammp_in} > ${ammp_out} 2> ${ammp_err}
+popd
+
+pushd "${programs_root}/applu/data/ref" || exit
+${programs_root}${simplescalar} ${fastfwd} ${maxinst} ${cache_dl1} ${cache_il1} ${cache_dl2} ${applu_result} ${applu_exe} < ${applu_in} > ${applu_out} 2> ${applu_err}
+popd
+
+pushd "${programs_root}/eon/data/ref" || exit
+${programs_root}${simplescalar} ${fastfwd} ${maxinst} ${cache_dl1} ${cache_il1} ${cache_dl2} ${eon_result} ${eon_exe} ${eon_in} > ${eon_out} 2> ${eon_err}
+popd
+
+pushd "${programs_root}/equake/data/ref" || exit
+${programs_root}${simplescalar} ${fastfwd} ${maxinst} ${cache_dl1} ${cache_il1} ${cache_dl2} ${equake_result} ${equake_exe} < ${equake_in} > ${equake_out} 2> ${equake_err}
+popd
+
+pushd "${programs_root}/vpr/data/ref" || exit
+${programs_root}${simplescalar} ${fastfwd} ${maxinst} ${cache_dl1} ${cache_il1} ${cache_dl2} ${vpr_result} ${vpr_exe} ${vpr_in} > ${vpr_out} 2> ${vpr_err}
+popd
+
+
+
